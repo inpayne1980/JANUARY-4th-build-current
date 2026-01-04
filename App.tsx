@@ -28,7 +28,7 @@ declare global {
   }
   
   interface Window {
-    // FIX: Removed readonly to match the environment's pre-configured global declaration
+    // Removed readonly to match the environment's pre-configured global declaration
     aistudio: AIStudio;
   }
 }
