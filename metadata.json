@@ -1,0 +1,9 @@
+{
+  "name": "Vendo v1.0 - The UGC Traffic Engine",
+  "description": "A premium UGC creator platform for AI ad generation, link hub optimization, and ROI tracking.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
