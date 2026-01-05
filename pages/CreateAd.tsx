@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   generateAdScripts, 
@@ -324,6 +325,28 @@ const CreateAd: React.FC<{ user: User }> = ({ user }) => {
                     {isMagicFilling ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : 'Refine Brief'}
                   </button>
                </div>
+               {/* Fixed: Display grounding links from Search Grounding results to comply with API guidelines */}
+               {groundingLinks.length > 0 && (
+                 <div className="mt-4 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100">
+                    <div className="flex items-center gap-2 mb-3">
+                      <LinkIcon className="w-4 h-4 text-indigo-600" />
+                      <span className="text-[10px] font-black text-indigo-900 uppercase tracking-widest">Research Sources Found</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {groundingLinks.map((link, i) => (
+                        <a 
+                          key={i} 
+                          href={link.web?.uri} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="px-3 py-1.5 bg-white text-indigo-600 rounded-lg text-[9px] font-bold border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all truncate max-w-[150px]"
+                        >
+                          {link.web?.title || 'View Reference'}
+                        </a>
+                      ))}
+                    </div>
+                 </div>
+               )}
             </div>
 
             <div className="space-y-8">

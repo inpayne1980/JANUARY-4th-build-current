@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 
 export interface GeneratedAd {
@@ -25,6 +26,31 @@ export interface SuccessInsight {
   replicationStrategy: string;
 }
 
+// CONTENT SAFETY LOGIC
+export const checkContentSafety = async (url: string, title: string): Promise<boolean> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: `Analyze the following link and title for NSFW (Not Safe For Work), adult, or sensitive content.
+    URL: ${url}
+    Title: ${title}
+    
+    Return a JSON boolean: true if it is potentially NSFW/sensitive, false if it is safe.`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.BOOLEAN,
+      }
+    }
+  });
+  
+  try {
+    return JSON.parse(response.text || "false");
+  } catch {
+    return false;
+  }
+};
+
 // VIDEO GENERATION LOGIC
 export const generateVideo = async (prompt: string, imageBase64?: string): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -44,7 +70,6 @@ export const generateVideo = async (prompt: string, imageBase64?: string): Promi
   });
 
   while (!operation.done) {
-    // Poll every 10 seconds as per guidelines
     await new Promise(resolve => setTimeout(resolve, 10000));
     operation = await ai.operations.getVideosOperation({ operation: operation });
   }
@@ -52,14 +77,9 @@ export const generateVideo = async (prompt: string, imageBase64?: string): Promi
   const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
   if (!downloadLink) throw new Error("Video generation failed to return a URI");
   
-  // Append API key when fetching from the download link
   return `${downloadLink}&key=${process.env.API_KEY}`;
 };
 
-/**
- * Enhanced with Performance Memory
- * Injects past high-performing patterns into new suggestions
- */
 export const generateAdScripts = async (
   product: string, 
   description: string, 
@@ -68,7 +88,6 @@ export const generateAdScripts = async (
 ): Promise<GeneratedAd[]> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  // Create Performance Memory context
   const memoryContext = pastHeroScripts.length > 0 
     ? `\n\n[PERFORMANCE MEMORY - CRITICAL]: The following hooks have previously driven high conversions for this user. 
        Analyze their structure, vocabulary, and 'vibe', and inject these successful patterns into at least 2 of the new suggestions.
@@ -143,25 +162,30 @@ export const generateSuccessInsight = async (
   return JSON.parse(response.text || '{}');
 };
 
+// Fixed: Removing responseMimeType and responseSchema when using the googleSearch tool as per guidelines.
+// "The output response.text may not be in JSON format; do not attempt to parse it as JSON."
 export const analyzeProductUrl = async (url: string): Promise<{ productName: string, description: string, links: any[] }> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Analyze this product URL and extract details for a UGC ad brief: ${url}`,
+    contents: `Analyze this product URL and extract details for a UGC ad brief: ${url}. Provide a clear "Product Name:" and "Description:".`,
     config: {
-      tools: [{ googleSearch: {} }],
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          productName: { type: Type.STRING },
-          description: { type: Type.STRING }
-        }
-      }
+      tools: [{ googleSearch: {} }]
     }
   });
+
+  const text = response.text || "";
+  // Simple heuristic extraction from textual output
+  const lines = text.split('\n');
+  const productNameLine = lines.find(l => l.toLowerCase().includes('product name')) || lines[0];
+  const productName = productNameLine.split(':').pop()?.trim() || "Analyzed Product";
+  
+  const descriptionLine = lines.find(l => l.toLowerCase().includes('description')) || text;
+  const description = descriptionLine.split(':').pop()?.trim() || text;
+
   return {
-    ...JSON.parse(response.text || '{}'),
+    productName,
+    description,
     links: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
   };
 };
