@@ -156,18 +156,23 @@ export const generateSuccessInsight = async (
       contents: `Analyze why this ad worked: "${script}". 
       Context: It drove ${totalClicks} clicks, with the top traffic source being ${topSource}.
       
-      Generate a data-driven "Why This Worked" summary. 
-      Include exactly 3 specific reasons formatted with data points.
-      Reason 1 must be about traffic source distribution (e.g., "78% came from TikTok").
-      Reason 2 must be about hook performance/retention (e.g., "2.1x higher retention").
-      Reason 3 must be about the offer or call-to-action context (e.g., "Linked to a limited-time offer").`,
+      Generate a data-driven "Why This Worked" report. 
+      Headline: A punchy analysis like "The 'Problem/Solution' Blueprint Success".
+      SummaryText: A sentence explaining the core win (e.g., "Your ad drove 42 clicks because:").
+      
+      Include exactly 3 specific reasons formatted with data points:
+      Reason 1: MUST be about traffic source distribution (e.g., "78% came from TikTok where you post daily").
+      Reason 2: MUST be about hook performance/retention (e.g., "The hook 'OMG you NEED this' had 2.1x higher retention").
+      Reason 3: MUST be about the offer/CTA context (e.g., "You linked to a limited-time offer which increased urgency").
+      
+      ReplicationStrategy: A clear 1-sentence tactical directive for the user's next campaign.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
             headline: { type: Type.STRING },
-            summaryText: { type: Type.STRING, description: 'A sentence like "Your ad drove 42 clicks because:"' },
+            summaryText: { type: Type.STRING },
             reasons: {
               type: Type.ARRAY,
               items: {
@@ -257,7 +262,13 @@ export const generateThumbnail = async (product: string, hook: string): Promise<
       contents: { parts: [{ text: `YouTube thumbnail for ${product} UGC ad. The text overlay should read: "${hook}" in a viral, bold font. Style: High contrast, creator-led.` }] },
       config: { imageConfig: { aspectRatio: "16:9" } }
     });
-    return `data:image/png;base64,${response.candidates?.[0]?.content?.parts.find(p => p.inlineData)?.inlineData?.data || ''}`;
+    
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) {
+        return `data:image/png;base64,${part.inlineData.data}`;
+      }
+    }
+    return '';
   } catch (e: any) {
     if (e.message?.includes("Requested entity was not found")) triggerResetKey();
     throw e;
@@ -272,7 +283,13 @@ export const generateAdVisual = async (prompt: string): Promise<string> => {
       contents: { parts: [{ text: prompt }] },
       config: { imageConfig: { aspectRatio: "9:16", imageSize: "4K" } }
     });
-    return `data:image/png;base64,${response.candidates?.[0]?.content?.parts.find(p => p.inlineData)?.inlineData?.data || ''}`;
+    
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) {
+        return `data:image/png;base64,${part.inlineData.data}`;
+      }
+    }
+    return '';
   } catch (e: any) {
     if (e.message?.includes("Requested entity was not found")) triggerResetKey();
     throw e;

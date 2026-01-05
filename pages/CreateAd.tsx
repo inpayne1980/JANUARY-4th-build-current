@@ -41,7 +41,8 @@ import {
   ClipboardDocumentCheckIcon,
   BeakerIcon,
   IdentificationIcon,
-  PresentationChartLineIcon
+  PresentationChartLineIcon,
+  DocumentArrowDownIcon
 } from '@heroicons/react/24/solid';
 
 interface VideoPlayerProps {
@@ -150,6 +151,7 @@ const CreateAd: React.FC<{ user: User }> = ({ user }) => {
   const [results, setResults] = useState<GeneratedAd[]>([]);
   const [selectedAdIdx, setSelectedAdIdx] = useState<number | null>(null);
   const [renderedVideoUrl, setRenderedVideoUrl] = useState<string | null>(null);
+  const [renderedThumbUrl, setRenderedThumbUrl] = useState<string | null>(null);
   const [imageAnalysis, setImageAnalysis] = useState<string | null>(null);
   const [socialCaptions, setSocialCaptions] = useState<SocialCaptions | null>(null);
   const [activeCaptionTab, setActiveCaptionTab] = useState<'tiktok' | 'instagram' | 'youtube'>('tiktok');
@@ -210,14 +212,19 @@ const CreateAd: React.FC<{ user: User }> = ({ user }) => {
         setRenderProgress(prev => Math.min(prev + 1, 98));
       }, 2500);
 
-      const videoUrl = await generateVideo(selectedAd.script);
+      // Parallelize asset generation
+      const [videoUrl, thumbUrl, captions] = await Promise.all([
+        generateVideo(selectedAd.script),
+        generateThumbnail(formData.productName, selectedAd.hook),
+        generateSocialCaptions(selectedAd.script)
+      ]);
+
       clearInterval(logInterval);
       
       setRenderProgress(100);
       setRenderStatus('Production Complete');
       setRenderedVideoUrl(videoUrl);
-      
-      const captions = await generateSocialCaptions(selectedAd.script);
+      setRenderedThumbUrl(thumbUrl);
       setSocialCaptions(captions);
       
       setTimeout(() => setStep(3), 1200);
@@ -241,6 +248,19 @@ const CreateAd: React.FC<{ user: User }> = ({ user }) => {
       } catch (e) { console.error(e); }
     };
     reader.readAsDataURL(file);
+  };
+
+  const downloadScript = () => {
+    if (selectedAdIdx === null) return;
+    const ad = results[selectedAdIdx];
+    const content = `PRODUCT: ${formData.productName}\nHOOK: ${ad.hook}\nSCRIPT:\n${ad.script}\n\nDIRECTOR NOTES: ${ad.memoryNote}`;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${formData.productName.replace(/\s+/g, '_')}_script.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -566,6 +586,58 @@ const CreateAd: React.FC<{ user: User }> = ({ user }) => {
                  </div>
               </div>
 
+              {/* Asset Download Center */}
+              <div className="mb-12 space-y-4">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Download Center</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <a 
+                      href={renderedVideoUrl} 
+                      download={`${formData.productName.replace(/\s+/g, '_')}_master.mp4`}
+                      className="flex items-center justify-between p-6 bg-slate-900 rounded-[2rem] group hover:bg-black transition-all"
+                   >
+                      <div className="flex items-center gap-4">
+                         <VideoCameraIcon className="w-6 h-6 text-indigo-400" />
+                         <div className="text-left">
+                            <p className="text-white font-black text-sm">Video Master</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">4K MP4 Asset</p>
+                         </div>
+                      </div>
+                      <ArrowDownTrayIcon className="w-5 h-5 text-white opacity-40 group-hover:opacity-100 transition-opacity" />
+                   </a>
+
+                   {renderedThumbUrl && (
+                     <a 
+                        href={renderedThumbUrl} 
+                        download={`${formData.productName.replace(/\s+/g, '_')}_thumb.png`}
+                        className="flex items-center justify-between p-6 bg-white border border-slate-100 rounded-[2rem] group hover:border-indigo-600 transition-all shadow-sm"
+                     >
+                        <div className="flex items-center gap-4">
+                           <PhotoIcon className="w-6 h-6 text-indigo-600" />
+                           <div className="text-left">
+                              <p className="text-slate-900 font-black text-sm">Thumbnail Pack</p>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">High-Res PNG</p>
+                           </div>
+                        </div>
+                        <ArrowDownTrayIcon className="w-5 h-5 text-slate-300 group-hover:text-indigo-600 transition-colors" />
+                     </a>
+                   )}
+
+                   <button 
+                      onClick={downloadScript}
+                      className="flex items-center justify-between p-6 bg-white border border-slate-100 rounded-[2rem] group hover:border-indigo-600 transition-all shadow-sm"
+                   >
+                      <div className="flex items-center gap-4">
+                         <DocumentArrowDownIcon className="w-6 h-6 text-slate-400 group-hover:text-indigo-600" />
+                         <div className="text-left">
+                            <p className="text-slate-900 font-black text-sm">Production Brief</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Script.txt file</p>
+                         </div>
+                      </div>
+                      <ArrowDownTrayIcon className="w-5 h-5 text-slate-300 group-hover:text-indigo-600 transition-colors" />
+                   </button>
+                </div>
+              </div>
+
               {socialCaptions && (
                 <div className="space-y-8 mb-12 bg-slate-50/50 p-8 rounded-[3rem] border border-slate-100">
                   <div className="flex items-center justify-between">
@@ -610,23 +682,13 @@ const CreateAd: React.FC<{ user: User }> = ({ user }) => {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <a 
-                   href={renderedVideoUrl} 
-                   download 
-                   className="py-7 bg-slate-900 text-white font-black text-xl rounded-3xl text-center hover:bg-black transition-all flex items-center justify-center gap-3 shadow-2xl shadow-slate-200 active:scale-[0.98]"
-                >
-                  <ArrowDownTrayIcon className="w-7 h-7" />
-                  Master Pack (4K)
-                </a>
-                <button 
-                  onClick={() => { setStep(1); setRenderedVideoUrl(null); setSelectedAdIdx(null); setSocialCaptions(null); }} 
-                  className="py-7 bg-white text-slate-400 font-black rounded-3xl hover:bg-slate-50 transition-all uppercase tracking-widest text-[11px] flex items-center justify-center gap-3 border border-slate-100 shadow-xl shadow-slate-100/50"
-                >
-                  <ArrowUturnLeftIcon className="w-4 h-4" />
-                  Start New Session
-                </button>
-              </div>
+              <button 
+                onClick={() => { setStep(1); setRenderedVideoUrl(null); setRenderedThumbUrl(null); setSelectedAdIdx(null); setSocialCaptions(null); }} 
+                className="w-full py-7 bg-white text-slate-400 font-black rounded-3xl hover:bg-slate-50 transition-all uppercase tracking-widest text-[11px] flex items-center justify-center gap-3 border border-slate-100 shadow-xl shadow-slate-100/50"
+              >
+                <ArrowUturnLeftIcon className="w-4 h-4" />
+                Start New Session
+              </button>
             </div>
             
             <div className="flex items-center gap-8 px-12">
