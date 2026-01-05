@@ -34,7 +34,7 @@ export interface LinkBlock {
   title: string;
   url: string;
   clicks: number;
-  type: 'shop' | 'ad' | 'custom';
+  type: 'shop' | 'ad' | 'custom' | 'social' | 'contact';
 }
 
 export interface ClickData {

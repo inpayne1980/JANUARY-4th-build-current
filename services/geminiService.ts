@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 
 export interface GeneratedAd {
@@ -57,6 +56,10 @@ export const generateVideo = async (prompt: string, imageBase64?: string): Promi
   return `${downloadLink}&key=${process.env.API_KEY}`;
 };
 
+/**
+ * Enhanced with Performance Memory
+ * Injects past high-performing patterns into new suggestions
+ */
 export const generateAdScripts = async (
   product: string, 
   description: string, 
@@ -64,13 +67,26 @@ export const generateAdScripts = async (
   pastHeroScripts: string[] = []
 ): Promise<GeneratedAd[]> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  // Create Performance Memory context
   const memoryContext = pastHeroScripts.length > 0 
-    ? `\n\n[PERFORMANCE MEMORY]: Referencing past high-performers: ${pastHeroScripts.join(' | ')}`
+    ? `\n\n[PERFORMANCE MEMORY - CRITICAL]: The following hooks have previously driven high conversions for this user. 
+       Analyze their structure, vocabulary, and 'vibe', and inject these successful patterns into at least 2 of the new suggestions.
+       Successful Patterns: ${pastHeroScripts.join(' | ')}`
     : "";
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Generate 3 UGC ad scripts for: ${product}. Details: ${description}. Tone: ${tone}. ${memoryContext}`,
+    contents: `You are a world-class UGC ad director. Generate 3 unique and highly viral UGC ad scripts for: ${product}. 
+    Details: ${description}. 
+    Tone: ${tone}. ${memoryContext}
+    
+    For each ad, provide:
+    1. A short, punchy hook (the first 3 seconds).
+    2. The full script (max 30 seconds).
+    3. The persona name of the AI avatar.
+    4. A detailed visual prompt for the scene rendering.
+    5. A 'memoryNote' explaining how you used Performance Memory to optimize this script (if applicable).`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -131,7 +147,7 @@ export const analyzeProductUrl = async (url: string): Promise<{ productName: str
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Analyze this product URL: ${url}`,
+    contents: `Analyze this product URL and extract details for a UGC ad brief: ${url}`,
     config: {
       tools: [{ googleSearch: {} }],
       responseMimeType: "application/json",
@@ -154,7 +170,8 @@ export const generateSocialCaptions = async (script: string): Promise<SocialCapt
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Generate viral captions for: "${script}"`,
+    contents: `Generate viral social media captions for a video with this script: "${script}".
+    Provide 2 variations for TikTok, 2 for Instagram Reels, and 2 for YouTube Shorts. Include 5 trending hashtags.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -175,7 +192,7 @@ export const generateThumbnail = async (product: string, hook: string): Promise<
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-image-preview',
-    contents: { parts: [{ text: `YouTube thumbnail for ${product}: "${hook}"` }] },
+    contents: { parts: [{ text: `YouTube thumbnail for ${product} UGC ad. The text overlay should read: "${hook}" in a viral, bold font. Style: High contrast, creator-led.` }] },
     config: { imageConfig: { aspectRatio: "16:9" } }
   });
   return `data:image/png;base64,${response.candidates?.[0]?.content?.parts.find(p => p.inlineData)?.inlineData?.data || ''}`;
@@ -211,7 +228,7 @@ export const transcribeAudio = async (base64Audio: string): Promise<string> => {
     contents: {
       parts: [
         { inlineData: { mimeType: 'audio/wav', data: base64Audio } },
-        { text: "Transcribe this audio exactly." }
+        { text: "Transcribe this audio exactly into text for a script brief." }
       ]
     }
   });
@@ -225,7 +242,7 @@ export const analyzeImage = async (base64Image: string): Promise<string> => {
     contents: {
       parts: [
         { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
-        { text: "Analyze this product photo for an ad brief." }
+        { text: "Analyze this product photo and extract key visual features, brand aesthetic, and selling points for a UGC ad brief." }
       ]
     }
   });
@@ -239,7 +256,7 @@ export const analyzeVideoContent = async (base64Thumbnail: string, script: strin
     contents: {
       parts: [
         { inlineData: { mimeType: 'image/jpeg', data: base64Thumbnail } },
-        { text: `Predict retention for: "${script}"` }
+        { text: `Predict retention and click-through potential for an ad with this visual style and this script: "${script}"` }
       ]
     }
   });
@@ -253,7 +270,7 @@ export const analyzeBaseVideo = async (base64Video: string): Promise<string> => 
     contents: {
       parts: [
         { inlineData: { mimeType: 'video/mp4', data: base64Video } },
-        { text: "Analyze this footage." }
+        { text: "Analyze this video footage. Extract the main action, environment, and creator energy to inform an AI-generated UGC ad." }
       ]
     }
   });
@@ -264,7 +281,7 @@ export const findLocalCreatorEvents = async (lat: number, lng: number): Promise<
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
-    contents: "Find 3 creator venues near me.",
+    contents: "Find 3 popular content creator venues or coworking spaces near this location.",
     config: {
       tools: [{ googleMaps: {} }],
       toolConfig: { retrievalConfig: { latLng: { latitude: lat, longitude: lng } } }
@@ -274,4 +291,13 @@ export const findLocalCreatorEvents = async (lat: number, lng: number): Promise<
     text: response.text || '',
     links: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
   };
+};
+
+export const refineAdScript = async (currentScript: string, prompt: string): Promise<string> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: `Refine this UGC ad script: "${currentScript}". User request: "${prompt}". Keep it under 30 seconds and maintain a viral, relatable tone.`,
+  });
+  return response.text || currentScript;
 };

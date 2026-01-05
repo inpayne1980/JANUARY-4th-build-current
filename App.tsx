@@ -20,18 +20,8 @@ import LinkHub from './pages/LinkHub';
 import Settings from './pages/Settings';
 import { User } from './types';
 
-declare global {
-  // Define AIStudio interface for window.aistudio
-  interface AIStudio {
-    hasSelectedApiKey: () => Promise<boolean>;
-    openSelectKey: () => Promise<void>;
-  }
-  
-  interface Window {
-    // Removed readonly to match the environment's pre-configured global declaration
-    aistudio: AIStudio;
-  }
-}
+// The global aistudio object is pre-configured in the environment.
+// Redundant declarations can cause modifier mismatch errors during TypeScript compilation.
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -47,8 +37,10 @@ const App: React.FC = () => {
 
     // MANDATORY: Check if API key is selected before accessing main app
     const checkApiKey = async () => {
+      // @ts-ignore: aistudio is pre-configured globally but may not be in the local TS context
       if (window.aistudio) {
         try {
+          // @ts-ignore
           const selected = await window.aistudio.hasSelectedApiKey();
           setHasApiKey(selected);
         } catch (e) {
@@ -95,7 +87,9 @@ const App: React.FC = () => {
   };
 
   const openApiKeyDialog = async () => {
+    // @ts-ignore
     if (window.aistudio) {
+      // @ts-ignore
       await window.aistudio.openSelectKey();
       // Guideline: Assume the key selection was successful after triggering openSelectKey()
       setHasApiKey(true);
