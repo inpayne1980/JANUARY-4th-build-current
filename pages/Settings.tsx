@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   ShieldCheckIcon, 
   TrashIcon, 
@@ -7,7 +7,9 @@ import {
   ShieldExclamationIcon,
   CheckCircleIcon,
   DocumentTextIcon,
-  ClockIcon
+  ClockIcon,
+  ChartPieIcon,
+  GlobeAltIcon
 } from '@heroicons/react/24/outline';
 import { User } from '../types';
 
@@ -17,6 +19,11 @@ interface SettingsProps {
 }
 
 const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
+  const [pixels, setPixels] = useState({
+    facebookPixelId: user.trackingPixels?.facebookPixelId || '',
+    googleAnalyticsId: user.trackingPixels?.googleAnalyticsId || ''
+  });
+
   const togglePrivacy = () => {
     const updatedUser: User = {
       ...user,
@@ -27,14 +34,71 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
     onUpdateUser(updatedUser);
   };
 
+  const handleSavePixels = () => {
+    const updatedUser: User = {
+      ...user,
+      trackingPixels: pixels
+    };
+    onUpdateUser(updatedUser);
+  };
+
   return (
     <div className="max-w-4xl mx-auto pb-24">
       <header className="mb-12">
         <h1 className="text-3xl font-black text-slate-900 tracking-tight">Account Settings</h1>
-        <p className="text-slate-500 font-medium">Manage your subscription and privacy preferences.</p>
+        <p className="text-slate-500 font-medium">Manage your subscription, privacy, and tracking pixels.</p>
       </header>
 
       <div className="space-y-10">
+        {/* Tracking & Pixels Section */}
+        <section className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
+          <div className="bg-slate-50 p-8 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center">
+                <ChartPieIcon className="w-7 h-7" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-slate-900">Marketing & Pixels</h2>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Analytics Injection</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-10 space-y-8">
+            <p className="text-sm font-medium text-slate-500 leading-relaxed max-w-lg">
+              Capture your own analytical data by injecting your Facebook Pixel or Google Analytics IDs directly into your Vendo Bio Hub.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+               <div className="space-y-2">
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Facebook Pixel ID</label>
+                 <input 
+                   placeholder="e.g. 1234567890"
+                   className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-xl font-bold focus:ring-4 focus:ring-indigo-100 outline-none transition-all"
+                   value={pixels.facebookPixelId}
+                   onChange={(e) => setPixels({...pixels, facebookPixelId: e.target.value})}
+                 />
+               </div>
+               <div className="space-y-2">
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Google Analytics ID (G-XXXX)</label>
+                 <input 
+                   placeholder="e.g. G-ABC123DEF"
+                   className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-xl font-bold focus:ring-4 focus:ring-indigo-100 outline-none transition-all"
+                   value={pixels.googleAnalyticsId}
+                   onChange={(e) => setPixels({...pixels, googleAnalyticsId: e.target.value})}
+                 />
+               </div>
+            </div>
+
+            <button 
+              onClick={handleSavePixels}
+              className="px-8 py-4 bg-slate-900 text-white font-black rounded-xl hover:bg-black transition-all shadow-xl shadow-slate-200 uppercase text-[10px] tracking-widest"
+            >
+              Update Pixel Configuration
+            </button>
+          </div>
+        </section>
+
         {/* Privacy Section */}
         <section className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
           <div className="bg-slate-50 p-8 border-b border-slate-100 flex items-center justify-between">

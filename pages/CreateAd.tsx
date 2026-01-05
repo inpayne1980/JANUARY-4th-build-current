@@ -15,7 +15,7 @@ import {
   generateVideo,
   SocialCaptions
 } from '../services/geminiService';
-import { User, LinkBlock } from '../types';
+import { User } from '../types';
 import { 
   CheckCircleIcon, 
   PlayIcon, 
@@ -34,16 +34,14 @@ import {
   ChartPieIcon,
   CameraIcon,
   LinkIcon,
-  DocumentDuplicateIcon,
-  HashtagIcon,
-  AdjustmentsHorizontalIcon,
-  PaperAirplaneIcon,
   Square3Stack3DIcon,
   LightBulbIcon,
   Square2StackIcon,
-  XMarkIcon,
   BoltIcon,
-  ClipboardDocumentCheckIcon
+  ClipboardDocumentCheckIcon,
+  BeakerIcon,
+  IdentificationIcon,
+  PresentationChartLineIcon
 } from '@heroicons/react/24/solid';
 
 interface VideoPlayerProps {
@@ -88,12 +86,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, poster }) => {
     }
   };
 
-  const handleLoadedMetadata = () => {
-    if (videoRef.current) { setDuration(videoRef.current.duration); }
-  };
-
   return (
-    <div className="relative w-full h-full group bg-black rounded-[2.5rem] overflow-hidden shadow-2xl ring-1 ring-white/10">
+    <div className="relative w-full aspect-[9/16] group bg-slate-900 rounded-[3rem] overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] border border-white/10">
       <video
         ref={videoRef}
         src={src}
@@ -101,36 +95,38 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, poster }) => {
         crossOrigin="anonymous"
         className="w-full h-full object-cover cursor-pointer"
         onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
+        onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
         onClick={togglePlay}
         loop
         playsInline
       />
       {!isPlaying && (
-        <div onClick={togglePlay} className="absolute inset-0 flex items-center justify-center bg-black/20 cursor-pointer transition-all hover:bg-black/30">
-          <div className="w-20 h-20 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full flex items-center justify-center text-white scale-100 hover:scale-110 transition-transform shadow-2xl">
-            <PlayIcon className="w-10 h-10 ml-1" />
+        <div onClick={togglePlay} className="absolute inset-0 flex items-center justify-center bg-black/30 cursor-pointer transition-all hover:bg-black/40">
+          <div className="w-24 h-24 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full flex items-center justify-center text-white scale-100 hover:scale-110 transition-transform shadow-2xl">
+            <PlayIcon className="w-10 h-10 ml-1.5" />
           </div>
         </div>
       )}
-      <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-        <div className="relative w-full mb-6">
-          <input type="range" min="0" max="100" value={progress} onChange={handleSeek} className="absolute top-0 w-full h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer accent-indigo-500 z-10" />
-          <div className="absolute top-0 h-1.5 bg-indigo-500 rounded-full pointer-events-none" style={{ width: `${progress}%` }}></div>
+      <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+        <div className="relative w-full mb-6 h-1 bg-white/10 rounded-full overflow-hidden">
+          <div className="absolute top-0 left-0 h-full bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.8)]" style={{ width: `${progress}%` }}></div>
+          <input type="range" min="0" max="100" value={progress} onChange={handleSeek} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
         </div>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
             <button onClick={togglePlay} className="text-white hover:text-indigo-400 transition-colors">
-              {isPlaying ? <PauseIcon className="w-6 h-6" /> : <PlayIcon className="w-6 h-6" />}
+              {isPlaying ? <PauseIcon className="w-7 h-7" /> : <PlayIcon className="w-7 h-7" />}
             </button>
             <button onClick={toggleMute} className="text-white hover:text-indigo-400 transition-colors">
-              {isMuted ? <SpeakerXMarkIcon className="w-6 h-6" /> : <SpeakerWaveIcon className="w-6 h-6" />}
+              {isMuted ? <SpeakerXMarkIcon className="w-7 h-7" /> : <SpeakerWaveIcon className="w-7 h-7" />}
             </button>
-            <div className="text-[10px] font-black text-white/60 uppercase tracking-widest tabular-nums">
-              {videoRef.current ? Math.floor(videoRef.current.currentTime) : 0}s / {Math.floor(duration)}s
-            </div>
           </div>
-          <div className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-lg border border-white/10 text-[9px] font-black text-white uppercase tracking-widest">4K Production</div>
+          <div className="flex items-center gap-3">
+             <div className="px-3 py-1 bg-indigo-500 text-white text-[9px] font-black rounded-lg uppercase tracking-widest shadow-lg shadow-indigo-500/30">Native 4K</div>
+             <div className="text-[10px] font-black text-white/60 uppercase tracking-widest tabular-nums">
+                {videoRef.current ? Math.floor(videoRef.current.currentTime) : 0}s / {Math.floor(duration)}s
+             </div>
+          </div>
         </div>
       </div>
     </div>
@@ -154,34 +150,15 @@ const CreateAd: React.FC<{ user: User }> = ({ user }) => {
   const [results, setResults] = useState<GeneratedAd[]>([]);
   const [selectedAdIdx, setSelectedAdIdx] = useState<number | null>(null);
   const [renderedVideoUrl, setRenderedVideoUrl] = useState<string | null>(null);
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [imageAnalysis, setImageAnalysis] = useState<string | null>(null);
-  const [videoAnalysis, setVideoAnalysis] = useState<string | null>(null);
-  const [baseVideoUrl, setBaseVideoUrl] = useState<string | null>(null);
-  const [isAnalyzingVideo, setIsAnalyzingVideo] = useState(false);
   const [socialCaptions, setSocialCaptions] = useState<SocialCaptions | null>(null);
   const [activeCaptionTab, setActiveCaptionTab] = useState<'tiktok' | 'instagram' | 'youtube'>('tiktok');
   
-  // Performance Memory Mock
-  const pastHeroScripts = [
-    "OMG you NEED to see this protein blend, it's a total game changer for my morning routine!",
-    "I stopped buying expensive lattes after I found this. 10/10 recommendation.",
-    "Busy moms, listen up: this is how I stay energetic all day without the crash."
-  ];
-
   const logEndRef = useRef<HTMLDivElement>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     if (logEndRef.current) { logEndRef.current.scrollIntoView({ behavior: 'smooth' }); }
   }, [renderLogs]);
-
-  const handleError = async (e: any) => {
-    console.error(e);
-    if (e.message?.includes("Requested entity was not found") && window.aistudio) {
-      await window.aistudio.openSelectKey();
-    }
-  };
 
   const handleMagicFill = async () => {
     if (!magicUrl) return;
@@ -195,18 +172,20 @@ const CreateAd: React.FC<{ user: User }> = ({ user }) => {
       }));
       setGroundingLinks(info.links);
       setMagicUrl('');
-    } catch (e) { await handleError(e); } 
+    } catch (e) { console.error(e); } 
     finally { setIsMagicFilling(false); }
   };
 
   const handleGenerateScripts = async () => {
     setIsGenerating(true);
-    setStep(2);
     try {
-      // PERFORMANCE MEMORY: Pass past hero scripts to the generator
-      const ads = await generateAdScripts(formData.productName, formData.description, formData.tone, pastHeroScripts);
+      const ads = await generateAdScripts(formData.productName, formData.description, formData.tone, [
+        "OMG you NEED to see this protein blend, it's a total game changer!",
+        "Busy moms, listen up: this is how I stay energetic all day."
+      ]);
       setResults(ads);
-    } catch (e) { await handleError(e); } 
+      setStep(2);
+    } catch (e) { console.error(e); } 
     finally { setIsGenerating(false); }
   };
 
@@ -214,46 +193,38 @@ const CreateAd: React.FC<{ user: User }> = ({ user }) => {
     if (selectedAdIdx === null) return;
     setRenderProgress(1);
     setRenderStatus('Initializing Gemini Veo...');
-    setRenderLogs(['[SYSTEM] Authenticating with Veo Operation Hub...', '[SYSTEM] Allocating 4K Render Nodes...']);
+    setRenderLogs(['[SYSTEM] Authenticating with Production Hub...', '[SYSTEM] Allocating 4K GPU Nodes...']);
     
     try {
       const selectedAd = results[selectedAdIdx];
-      
       const logInterval = setInterval(() => {
         const fakeLogs = [
           "Synthesizing lighting environment...",
           "Mapping skin textures to actor persona...",
           "Syncing neural lip-motion with script data...",
           "Applying cinematic color grading (9:16)...",
-          "Generating viral social copy deck..."
+          "Generating social distribution pack..."
         ];
         const log = fakeLogs[Math.floor(Math.random() * fakeLogs.length)];
         setRenderLogs(prev => [...prev, `[RENDER] ${log}`]);
-        setRenderProgress(prev => Math.min(prev + 1, 95));
-      }, 3000);
+        setRenderProgress(prev => Math.min(prev + 1, 98));
+      }, 2500);
 
       const videoUrl = await generateVideo(selectedAd.script);
       clearInterval(logInterval);
       
       setRenderProgress(100);
       setRenderStatus('Production Complete');
-      setRenderLogs(prev => [...prev, '[SYSTEM] Asset packaged. Delivery verified.']);
-      
       setRenderedVideoUrl(videoUrl);
       
-      // Post-generation processing
       const captions = await generateSocialCaptions(selectedAd.script);
       setSocialCaptions(captions);
       
-      setTimeout(() => setStep(3), 1000);
+      setTimeout(() => setStep(3), 1200);
     } catch (e) {
-      await handleError(e);
+      console.error(e);
       setRenderProgress(0);
     }
-  };
-
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -262,198 +233,301 @@ const CreateAd: React.FC<{ user: User }> = ({ user }) => {
     const reader = new FileReader();
     reader.onloadend = async () => {
       const base64 = (reader.result as string).split(',')[1];
-      setImageAnalysis("Analyzing photo context...");
+      setImageAnalysis("Processing visual context...");
       try {
         const analysis = await analyzeImage(base64);
         setImageAnalysis(analysis);
         setFormData(prev => ({ ...prev, description: prev.description + "\n\n[Visual Insight]: " + analysis }));
-      } catch (e) { await handleError(e); }
+      } catch (e) { console.error(e); }
     };
     reader.readAsDataURL(file);
   };
 
   return (
-    <div className="max-w-5xl mx-auto pb-24 px-4">
-      {/* Step Header */}
-      <div className="flex items-center gap-4 mb-12">
-        <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-indigo-200">
-          <VideoCameraIcon className="w-7 h-7" />
+    <div className="max-w-7xl mx-auto pb-32">
+      {/* Immersive Step Navigation */}
+      <div className="flex items-center justify-between mb-16 bg-white/50 backdrop-blur-xl p-4 rounded-3xl border border-slate-200 sticky top-4 z-40 shadow-xl shadow-slate-100/50">
+        <div className="flex items-center gap-4">
+           <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white">
+              <VideoCameraIcon className="w-6 h-6" />
+           </div>
+           <div>
+              <h1 className="text-xl font-black text-slate-900 tracking-tight">AI Studio <span className="text-indigo-600 font-bold ml-1">v1.0</span></h1>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Creator Account: @{user.username}</p>
+           </div>
         </div>
-        <div className="flex-1">
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">AI UGC Studio</h1>
-            <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100">
-               <Square3Stack3DIcon className="w-4 h-4" />
-               <span className="text-[10px] font-black uppercase tracking-widest">Performance Memory Linked</span>
-            </div>
-          </div>
-          <div className="flex gap-1 mt-2">
-            {[1, 2, 3].map(i => (
-              <div key={i} className={`h-1.5 w-8 rounded-full transition-all duration-500 ${step >= i ? 'bg-indigo-600' : 'bg-slate-200'}`}></div>
-            ))}
-          </div>
+        
+        <div className="flex items-center gap-8 pr-4">
+           <StepIndicator num={1} active={step >= 1} label="Creative Brief" />
+           <div className="w-8 h-px bg-slate-200" />
+           <StepIndicator num={2} active={step >= 2} label="Hook Select" />
+           <div className="w-8 h-px bg-slate-200" />
+           <StepIndicator num={3} active={step >= 3} label="Asset Pack" />
         </div>
       </div>
 
       {step === 1 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
-          <div className="bg-white p-10 md:p-12 rounded-[3rem] border border-slate-200 shadow-sm space-y-10">
-            <div className="space-y-4">
-               <div className="flex justify-between items-center mb-2">
-                 <h2 className="text-xl font-black text-slate-900 tracking-tight">The Brief</h2>
-                 <label className="cursor-pointer group">
-                    <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 text-slate-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all">
-                      <PhotoIcon className="w-4 h-4" />
-                      Add Visual Context
-                    </div>
-                 </label>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <div className="lg:col-span-8 space-y-8">
+            <div className="bg-white p-10 md:p-14 rounded-[4rem] border border-slate-100 shadow-2xl shadow-indigo-100/20">
+               <div className="flex items-center justify-between mb-12">
+                  <h2 className="text-3xl font-black text-slate-900 tracking-tight">Production Brief</h2>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-full border border-indigo-100 text-[9px] font-black uppercase tracking-widest">
+                     <BoltIcon className="w-3.5 h-3.5" />
+                     Gemini 3 Pro Active
+                  </div>
                </div>
-               <div className="relative group">
-                  <input 
-                    type="text" 
-                    placeholder="Paste Product URL for Magic Auto-Fill" 
-                    value={magicUrl}
-                    onChange={(e) => setMagicUrl(e.target.value)}
-                    className="w-full pl-6 pr-32 py-5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:bg-white focus:ring-[6px] focus:ring-indigo-100 font-bold transition-all text-sm"
-                  />
+
+               <div className="space-y-10">
+                  <div className="relative group">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 ml-2">Magic Auto-Fill (Optional)</label>
+                    <input 
+                      type="text" 
+                      placeholder="Paste Product URL (Amazon, Gumroad, Shopify...)" 
+                      value={magicUrl}
+                      onChange={(e) => setMagicUrl(e.target.value)}
+                      className="w-full pl-8 pr-40 py-6 bg-slate-50 border border-slate-200 rounded-[2rem] outline-none focus:bg-white focus:ring-[12px] focus:ring-indigo-100/50 font-bold transition-all text-sm placeholder:text-slate-300"
+                    />
+                    <button 
+                      onClick={handleMagicFill}
+                      disabled={isMagicFilling}
+                      className="absolute right-3 top-3 bottom-3 px-8 bg-slate-900 hover:bg-black text-white font-black text-[11px] rounded-[1.5rem] uppercase tracking-widest transition-all shadow-xl shadow-slate-200 active:scale-95"
+                    >
+                      {isMagicFilling ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : 'Scrape Data'}
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                     <div className="space-y-3">
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Product Persona</label>
+                        <input 
+                          placeholder="e.g. HydroGlow Serum" 
+                          className="w-full px-8 py-5 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:ring-8 focus:ring-indigo-100/50 outline-none transition-all"
+                          value={formData.productName}
+                          onChange={(e) => setFormData({...formData, productName: e.target.value})}
+                        />
+                     </div>
+                     <div className="space-y-3">
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Ad Vibe</label>
+                        <div className="flex gap-2 p-1.5 bg-slate-100 rounded-2xl">
+                           {['Energetic', 'Relatable', 'Luxe'].map(t => (
+                             <button 
+                               key={t}
+                               onClick={() => setFormData({...formData, tone: t})}
+                               className={`flex-1 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${formData.tone === t ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                             >
+                               {t}
+                             </button>
+                           ))}
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="space-y-3">
+                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Core Script Goals</label>
+                     <textarea 
+                        rows={4}
+                        placeholder="What problem does this solve? What's the main hook?"
+                        className="w-full px-8 py-6 bg-slate-50 border border-slate-100 rounded-3xl font-bold focus:ring-8 focus:ring-indigo-100/50 outline-none transition-all resize-none"
+                        value={formData.description}
+                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                     />
+                  </div>
+
                   <button 
-                    onClick={handleMagicFill}
-                    disabled={isMagicFilling}
-                    className="absolute right-3 top-2 bottom-2 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] rounded-xl uppercase tracking-widest transition-all shadow-lg shadow-indigo-100/40"
+                    onClick={handleGenerateScripts} 
+                    disabled={isGenerating || !formData.productName}
+                    className="w-full py-7 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-3xl transition-all shadow-2xl shadow-indigo-200 text-lg flex items-center justify-center gap-4 group disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isMagicFilling ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : 'Refine Brief'}
+                    {isGenerating ? <ArrowPathIcon className="w-7 h-7 animate-spin" /> : (
+                      <>
+                        <SparklesIcon className="w-7 h-7 text-white animate-pulse" />
+                        Synthesize Creator Hooks
+                      </>
+                    )}
                   </button>
                </div>
-               {/* Fixed: Display grounding links from Search Grounding results to comply with API guidelines */}
-               {groundingLinks.length > 0 && (
-                 <div className="mt-4 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100">
-                    <div className="flex items-center gap-2 mb-3">
-                      <LinkIcon className="w-4 h-4 text-indigo-600" />
-                      <span className="text-[10px] font-black text-indigo-900 uppercase tracking-widest">Research Sources Found</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {groundingLinks.map((link, i) => (
-                        <a 
-                          key={i} 
-                          href={link.web?.uri} 
-                          target="_blank" 
-                          rel="noreferrer"
-                          className="px-3 py-1.5 bg-white text-indigo-600 rounded-lg text-[9px] font-bold border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all truncate max-w-[150px]"
-                        >
-                          {link.web?.title || 'View Reference'}
-                        </a>
-                      ))}
-                    </div>
-                 </div>
-               )}
-            </div>
-
-            <div className="space-y-8">
-              <FormInput label="Product Name" placeholder="e.g. Protein Glow" value={formData.productName} onChange={(v) => setFormData({...formData, productName: v})} />
-              <FormTextarea label="Campaign Goal" placeholder="What's the main pain point we are solving?" value={formData.description} onChange={(v) => setFormData({...formData, description: v})} />
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">UGC Brand Tone</label>
-                <div className="grid grid-cols-3 gap-3">
-                  {['Energetic', 'Relatable', 'Professional'].map((tone) => (
-                    <button key={tone} onClick={() => setFormData({...formData, tone})} className={`py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest border-2 transition-all ${formData.tone === tone ? 'border-indigo-600 bg-indigo-50 text-indigo-600 shadow-lg shadow-indigo-100' : 'border-slate-50 bg-slate-50 text-slate-400 hover:border-slate-200 hover:bg-white'}`}>{tone}</button>
-                  ))}
-                </div>
-              </div>
-              <button onClick={handleGenerateScripts} disabled={isGenerating} className="w-full py-6 bg-slate-900 hover:bg-black text-white font-black rounded-2xl transition-all shadow-2xl shadow-slate-100 text-lg group">
-                {isGenerating ? <ArrowPathIcon className="w-6 h-6 animate-spin mx-auto" /> : (
-                  <div className="flex items-center justify-center gap-3">
-                    <SparklesIcon className="w-6 h-6 text-indigo-400" />
-                    Generate Creative Concepts
-                  </div>
-                )}
-              </button>
             </div>
           </div>
-          <div className="space-y-6 lg:pt-12">
-            <FeatureBox icon={<CpuChipIcon className="w-6 h-6" />} title="Performance Memory Active" desc="Gemini is analyzing your 3 past top-performing 'Hero' scripts to replicate successful hooks." />
-            <FeatureBox icon={<CloudArrowUpIcon className="w-6 h-6" />} title="Veo 4K Production" desc="Final assets are rendered in native 4K with cinema-grade color grading." />
+
+          <div className="lg:col-span-4 space-y-6">
+             <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl space-y-8">
+                <div className="flex items-center gap-3">
+                   <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+                      <PresentationChartLineIcon className="w-5 h-5" />
+                   </div>
+                   <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Creative Intelligence</h3>
+                </div>
+                
+                <FeatureSmall 
+                  icon={<CpuChipIcon className="w-5 h-5" />} 
+                  label="Performance Memory" 
+                  desc="Gemini is analyzing your 3 past viral hooks for style replication." 
+                />
+                <FeatureSmall 
+                  icon={<IdentificationIcon className="w-5 h-5" />} 
+                  label="Context Engine" 
+                  desc={imageAnalysis || groundingLinks.length > 0 ? "Sources locked and analyzed." : "Upload photos or paste URLs to feed the AI."} 
+                  active={!!(imageAnalysis || groundingLinks.length > 0)}
+                />
+
+                <div className="pt-4">
+                  <label className="cursor-pointer group block">
+                    <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                    <div className="w-full py-5 bg-slate-50 hover:bg-slate-900 hover:text-white border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center transition-all group-hover:border-slate-900">
+                       <PhotoIcon className="w-6 h-6 mb-2" />
+                       <span className="text-[10px] font-black uppercase tracking-widest">Inject Visual Reference</span>
+                    </div>
+                  </label>
+                </div>
+             </div>
+             
+             <div className="bg-indigo-600 rounded-[3rem] p-8 text-white shadow-2xl shadow-indigo-200 border border-indigo-500 overflow-hidden relative">
+                <BeakerIcon className="w-32 h-32 absolute -bottom-8 -right-8 opacity-10" />
+                <h4 className="text-xl font-black mb-4">4K Production Credits</h4>
+                <p className="text-indigo-100 text-xs font-bold leading-relaxed mb-6">Your account is currently in Pro mode. 4 cinematic renders are available this billing cycle.</p>
+                <div className="w-full h-2 bg-indigo-900/40 rounded-full overflow-hidden">
+                   <div className="w-3/4 h-full bg-white shadow-[0_0_10px_white]"></div>
+                </div>
+                <div className="mt-4 text-center">
+                   <span className="text-[9px] font-black uppercase tracking-widest text-indigo-200">3 of 4 Credits Remaining</span>
+                </div>
+             </div>
           </div>
         </div>
       )}
 
       {step === 2 && (
-        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-700">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="space-y-12 animate-in fade-in slide-in-from-bottom-12 duration-1000">
+          <div className="text-center max-w-2xl mx-auto">
+             <h2 className="text-4xl font-black text-slate-900 tracking-tighter mb-4">Select Your Winning Hook</h2>
+             <p className="text-slate-500 font-bold text-lg leading-relaxed">Our AI generated 3 unique storyboards. Choose the one that fits your brand aesthetic best.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             {results.map((ad, idx) => (
-              <div key={idx} onClick={() => setSelectedAdIdx(idx)} className={`relative cursor-pointer rounded-[2.5rem] overflow-hidden border-4 transition-all group ${selectedAdIdx === idx ? 'border-indigo-600 scale-[1.03] shadow-2xl' : 'border-white hover:border-slate-200 shadow-md'}`}>
+              <div 
+                key={idx} 
+                onClick={() => setSelectedAdIdx(idx)} 
+                className={`relative cursor-pointer rounded-[3.5rem] overflow-hidden border-4 transition-all duration-500 group ${selectedAdIdx === idx ? 'border-indigo-600 scale-[1.05] shadow-[0_48px_96px_-24px_rgba(99,102,241,0.3)]' : 'border-white hover:border-slate-200 shadow-2xl shadow-slate-200/50'}`}
+              >
                 <div className="aspect-[9/16] bg-slate-900 relative">
-                  <img src={`https://picsum.photos/seed/${idx + 1000}/400/700`} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-[4s]" alt="Preview" />
-                  <div className="absolute top-6 left-6 right-6">
-                     {ad.memoryNote && (
-                       <div className="bg-indigo-600 text-white text-[9px] font-black px-3 py-1.5 rounded-xl uppercase tracking-widest flex items-center gap-2 shadow-lg">
-                         <BoltIcon className="w-3 h-3" />
-                         Memory Boosted
+                  <img src={`https://picsum.photos/seed/${idx + 1500}/400/700`} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-[6s]" alt="Storyboard" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent"></div>
+                  
+                  <div className="absolute top-8 left-8 right-8 flex justify-between items-start">
+                     <div className="px-4 py-2 bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 text-[9px] font-black text-white uppercase tracking-widest">Hook #{idx + 1}</div>
+                     {idx === 0 && (
+                       <div className="px-4 py-2 bg-indigo-600 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-xl shadow-indigo-500/40 flex items-center gap-2">
+                         <SparklesIcon className="w-3.5 h-3.5" />
+                         AI Favorite
                        </div>
                      )}
                   </div>
-                  <div className="absolute bottom-8 left-8 right-8">
-                    <p className="text-white font-black text-xl leading-tight tracking-tight group-hover:text-indigo-200 transition-colors">"{ad.hook}"</p>
+
+                  <div className="absolute bottom-10 left-10 right-10">
+                    <p className="text-white font-black text-2xl leading-tight tracking-tight mb-4">"{ad.hook}"</p>
+                    <div className="flex items-center gap-3">
+                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>
+                       <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Persona: {ad.avatarName}</span>
+                    </div>
                   </div>
-                  {selectedAdIdx === idx && <div className="absolute top-6 right-6 w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-xl shadow-indigo-900/40 animate-in zoom-in-50"><CheckCircleIcon className="w-7 h-7" /></div>}
+                  
+                  {selectedAdIdx === idx && (
+                    <div className="absolute inset-0 bg-indigo-600/10 backdrop-blur-[2px] flex items-center justify-center animate-in fade-in zoom-in duration-300">
+                       <div className="w-20 h-20 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-2xl ring-8 ring-indigo-600/20">
+                          <CheckCircleIcon className="w-12 h-12" />
+                       </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
           </div>
 
           {selectedAdIdx !== null && (
-            <div className="space-y-6">
-              <div className="bg-white p-12 rounded-[3rem] border border-slate-200 shadow-2xl animate-in zoom-in-95">
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Final Production Script</h3>
-                  {results[selectedAdIdx].memoryNote && (
-                    <div className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-100 flex items-center gap-2">
-                       <LightBulbIcon className="w-4 h-4" />
-                       Success Pattern Applied
-                    </div>
-                  )}
-                </div>
-                <p className="text-2xl md:text-3xl font-bold text-slate-800 italic mb-10 leading-snug">"{results[selectedAdIdx].script}"</p>
-                
-                {results[selectedAdIdx].memoryNote && (
-                  <div className="mb-10 p-5 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-bold text-slate-500 leading-relaxed italic">
-                    <SparklesIcon className="w-4 h-4 text-indigo-500 mb-2" />
-                    <span className="text-slate-900 font-black uppercase tracking-widest mr-2">Optimization Insight:</span>
-                    {results[selectedAdIdx].memoryNote}
+            <div className="max-w-4xl mx-auto space-y-8 animate-in slide-in-from-top-12 duration-700">
+               <div className="bg-white p-12 md:p-16 rounded-[4rem] border border-slate-100 shadow-2xl relative overflow-hidden">
+                  <div className="flex items-center justify-between mb-12">
+                     <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white">
+                           <ClipboardDocumentCheckIcon className="w-6 h-6" />
+                        </div>
+                        <div>
+                           <h3 className="text-xl font-black text-slate-900 tracking-tight">Production Script</h3>
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Optimized for 9:16 Retention</p>
+                        </div>
+                     </div>
+                     <button className="p-4 bg-slate-50 text-slate-400 hover:text-indigo-600 rounded-2xl transition-colors">
+                        <Square2StackIcon className="w-6 h-6" />
+                     </button>
                   </div>
-                )}
 
-                <button onClick={handleRenderAd} className="w-full py-6 bg-slate-900 hover:bg-black text-white font-black text-xl rounded-2xl transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-4 group">
-                  <SparklesIcon className="w-6 h-6 text-amber-400 group-hover:rotate-12 transition-transform" />
-                  Render High-Fidelity UGC Pack
-                </button>
-              </div>
+                  <p className="text-3xl font-bold text-slate-800 leading-tight italic mb-12">
+                     "{results[selectedAdIdx].script}"
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+                     <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">AI Director's Note</h4>
+                        <p className="text-xs font-bold text-slate-600 leading-relaxed italic">{results[selectedAdIdx].memoryNote}</p>
+                     </div>
+                     <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Visual Rendering Map</h4>
+                        <p className="text-xs font-bold text-slate-600 leading-relaxed italic">{results[selectedAdIdx].visualPrompt}</p>
+                     </div>
+                  </div>
+
+                  <button 
+                    onClick={handleRenderAd} 
+                    className="w-full py-8 bg-slate-900 hover:bg-black text-white font-black text-xl rounded-[2rem] transition-all shadow-2xl shadow-slate-200 flex items-center justify-center gap-4 group overflow-hidden relative"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                    <SparklesIcon className="w-7 h-7 text-amber-400 group-hover:scale-110 transition-transform" />
+                    Commence 4K Cloud Render
+                  </button>
+               </div>
             </div>
           )}
         </div>
       )}
 
       {renderProgress > 0 && step === 2 && (
-        <div className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-3xl flex items-center justify-center p-12 animate-in fade-in duration-500">
-          <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-             <div className="text-center lg:text-left">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-black text-[10px] uppercase tracking-widest mb-8">
-                   <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
-                   Cloud Rendering Active
+        <div className="fixed inset-0 z-[200] bg-slate-950/98 backdrop-blur-3xl flex items-center justify-center p-12 animate-in fade-in duration-700">
+          <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+             <div className="text-center lg:text-left space-y-12">
+                <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-black text-[11px] uppercase tracking-[0.2em] shadow-2xl">
+                   <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_15px_rgba(99,102,241,1)]"></div>
+                   Hyper-Threaded Render Active
                 </div>
-                <h2 className="text-5xl md:text-6xl font-black text-white mb-6 tracking-tighter leading-none">{renderStatus}</h2>
-                <div className="flex items-center gap-6 mb-12">
-                   <div className="text-6xl font-black text-indigo-500 tabular-nums">{renderProgress}%</div>
-                   <div className="flex-1 h-3 bg-white/10 rounded-full overflow-hidden">
-                      <div className="h-full bg-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.6)] transition-all duration-300" style={{ width: `${renderProgress}%` }}></div>
+                <h2 className="text-6xl md:text-8xl font-black text-white tracking-tighter leading-none">{renderStatus}</h2>
+                <div className="space-y-6">
+                   <div className="flex justify-between items-end mb-2">
+                      <span className="text-6xl font-black text-white tabular-nums tracking-tighter">{renderProgress}%</span>
+                      <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4">Finalizing Modality Sync</span>
+                   </div>
+                   <div className="h-4 bg-white/10 rounded-full overflow-hidden p-1">
+                      <div className="h-full bg-indigo-500 rounded-full shadow-[0_0_40px_rgba(99,102,241,1)] transition-all duration-700 relative" style={{ width: `${renderProgress}%` }}>
+                         <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent animate-shimmer"></div>
+                      </div>
                    </div>
                 </div>
-                <p className="text-slate-500 font-bold text-sm leading-relaxed max-w-md">Our cloud nodes are synthesizing high-fidelity textures and neural motion. This operation usually takes 1-3 minutes.</p>
+                <p className="text-slate-500 font-bold text-lg leading-relaxed max-w-md">Our neural engine is synthesizing cinematic assets, applying 4K color science, and mapping script data to high-fidelity actor performance.</p>
              </div>
-             <div className="bg-black/50 border border-white/10 rounded-3xl p-6 font-mono text-[11px] text-emerald-500/80 h-[300px] overflow-hidden flex flex-col shadow-2xl">
-                <div className="flex items-center gap-2 mb-4 border-b border-white/5 pb-4"><CommandLineIcon className="w-4 h-4" /><span className="font-bold text-slate-400 uppercase tracking-widest text-[9px]">Console v1.0.4</span></div>
-                <div className="flex-1 overflow-y-auto space-y-1 no-scrollbar">
-                  {renderLogs.map((log, i) => (<div key={i} className="animate-in slide-in-from-left-2 duration-300">{log}</div>))}
+             
+             <div className="bg-black/50 border border-white/10 rounded-[3rem] p-10 font-mono text-[12px] text-emerald-500/70 h-[450px] overflow-hidden flex flex-col shadow-[0_64px_128px_-24px_rgba(0,0,0,1)] relative">
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10 pointer-events-none"></div>
+                <div className="flex items-center gap-3 mb-8 border-b border-white/5 pb-6">
+                   <CommandLineIcon className="w-5 h-5 text-slate-500" />
+                   <span className="font-black text-slate-500 uppercase tracking-[0.3em] text-[10px]">Production Node Terminal v1.2</span>
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar pb-20">
+                  {renderLogs.map((log, i) => (
+                    <div key={i} className="animate-in slide-in-from-left-4 duration-500 flex items-start gap-4">
+                       <span className="text-white/20 shrink-0">[{new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
+                       <span className={log.includes('[SYSTEM]') ? 'text-indigo-400 font-bold' : ''}>{log}</span>
+                    </div>
+                  ))}
                   <div ref={logEndRef} />
                 </div>
              </div>
@@ -462,41 +536,49 @@ const CreateAd: React.FC<{ user: User }> = ({ user }) => {
       )}
 
       {step === 3 && renderedVideoUrl && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start animate-in zoom-in-95 duration-1000">
-          <div className="lg:col-span-5 flex flex-col gap-6">
-            <div className="aspect-[9/16] min-h-[500px]">
-              <VideoPlayer src={renderedVideoUrl} />
-            </div>
-            {videoAnalysis && (
-              <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                 <div className="flex items-center gap-2 mb-4">
-                    <ChartPieIcon className="w-5 h-5 text-indigo-600" />
-                    <h4 className="font-black text-slate-900 text-xs uppercase tracking-widest">Retention Forecast</h4>
-                 </div>
-                 <p className="text-xs font-bold text-slate-500 leading-relaxed italic">{videoAnalysis}</p>
-              </div>
-            )}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start animate-in zoom-in-95 duration-1000">
+          <div className="lg:col-span-5 space-y-8">
+             <VideoPlayer src={renderedVideoUrl} />
+             
+             <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                   <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
+                      <ChartPieIcon className="w-6 h-6" />
+                   </div>
+                   <div>
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Retention Forecast</h4>
+                      <p className="text-sm font-black text-slate-900">92% Engagement Potential</p>
+                   </div>
+                </div>
+                <button className="px-6 py-3 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-200">View Data</button>
+             </div>
           </div>
-          <div className="lg:col-span-7 space-y-10">
-            <div className="bg-white p-10 md:p-14 rounded-[3.5rem] border border-slate-200 shadow-sm relative overflow-hidden">
-              <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-3xl flex items-center justify-center mb-8 shadow-inner"><CloudArrowUpIcon className="w-10 h-10" /></div>
-              <h2 className="text-4xl md:text-5xl font-black text-slate-900 mb-4 tracking-tighter leading-tight">UGC Bundle Ready</h2>
-              <p className="text-slate-500 font-bold text-lg leading-relaxed mb-10">Your master 4K production and optimized clips are generated and synced to Drive.</p>
-              
-              {/* ENHANCEMENT: Social Copy Deck Section */}
+
+          <div className="lg:col-span-7 space-y-12">
+            <div className="bg-white p-12 md:p-16 rounded-[4rem] border border-slate-100 shadow-2xl">
+              <div className="flex items-center gap-6 mb-12">
+                 <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-3xl flex items-center justify-center shadow-inner">
+                    <CloudArrowUpIcon className="w-8 h-8" />
+                 </div>
+                 <div>
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tight">Master Asset Pack</h2>
+                    <p className="text-slate-500 font-bold text-lg">High-fidelity production complete and synced.</p>
+                 </div>
+              </div>
+
               {socialCaptions && (
-                <div className="space-y-6 mb-10 border-y border-slate-100 py-10">
+                <div className="space-y-8 mb-12 bg-slate-50/50 p-8 rounded-[3rem] border border-slate-100">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <SparklesIcon className="w-5 h-5 text-amber-500" />
-                      <h4 className="font-black text-slate-900 text-xs uppercase tracking-widest">Social Copy Deck</h4>
+                      <SparklesIcon className="w-6 h-6 text-amber-500" />
+                      <h4 className="font-black text-slate-900 text-xs uppercase tracking-[0.2em]">Distribution Copy Deck</h4>
                     </div>
-                    <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                    <div className="flex gap-1.5 bg-slate-200 p-1.5 rounded-2xl">
                       {(['tiktok', 'instagram', 'youtube'] as const).map((platform) => (
                         <button 
                           key={platform}
                           onClick={() => setActiveCaptionTab(platform)}
-                          className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeCaptionTab === platform ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                          className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeCaptionTab === platform ? 'bg-white text-slate-900 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                           {platform}
                         </button>
@@ -504,24 +586,23 @@ const CreateAd: React.FC<{ user: User }> = ({ user }) => {
                     </div>
                   </div>
                   
-                  <div className="space-y-3 min-h-[160px] animate-in slide-in-from-right-4 duration-300" key={activeCaptionTab}>
+                  <div className="space-y-4 min-h-[180px] animate-in slide-in-from-right-8 duration-500" key={activeCaptionTab}>
                     {socialCaptions[activeCaptionTab].map((cap, i) => (
-                      <div key={i} className="group relative bg-slate-50 p-4 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-white transition-all">
-                        <p className="text-xs font-bold text-slate-600 leading-snug pr-12">{cap}</p>
+                      <div key={i} className="group relative bg-white p-6 rounded-2xl border border-slate-100 hover:border-indigo-600/30 transition-all shadow-sm">
+                        <p className="text-sm font-bold text-slate-600 leading-relaxed pr-16">{cap}</p>
                         <button 
-                          onClick={() => handleCopy(cap)}
-                          className="absolute right-3 bottom-3 p-2 bg-white rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 transition-opacity hover:text-indigo-600 flex items-center gap-2"
+                          onClick={() => navigator.clipboard.writeText(cap)}
+                          className="absolute right-4 bottom-4 p-3 bg-slate-900 text-white rounded-xl opacity-0 group-hover:opacity-100 transition-opacity active:scale-90 shadow-lg"
                         >
-                          <Square2StackIcon className="w-4 h-4" />
-                          <span className="text-[8px] font-black uppercase tracking-widest">Copy</span>
+                          <Square2StackIcon className="w-5 h-5" />
                         </button>
                       </div>
                     ))}
                   </div>
 
-                  <div className="flex flex-wrap gap-2 pt-4">
+                  <div className="flex flex-wrap gap-2.5">
                     {socialCaptions.hashtags.map((tag, i) => (
-                      <span key={i} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-indigo-100">
+                      <span key={i} className="px-4 py-2 bg-white text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-200 shadow-sm">
                         {tag}
                       </span>
                     ))}
@@ -529,19 +610,29 @@ const CreateAd: React.FC<{ user: User }> = ({ user }) => {
                 </div>
               )}
 
-              <div className="flex flex-col sm:flex-row gap-4">
-                <a href={renderedVideoUrl} download className="flex-1 py-6 bg-slate-900 text-white font-black text-xl rounded-2xl text-center hover:bg-black transition-all flex items-center justify-center gap-3 shadow-xl shadow-slate-200">
-                  <ArrowDownTrayIcon className="w-6 h-6" />
-                  Download Bundle
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <a 
+                   href={renderedVideoUrl} 
+                   download 
+                   className="py-7 bg-slate-900 text-white font-black text-xl rounded-3xl text-center hover:bg-black transition-all flex items-center justify-center gap-3 shadow-2xl shadow-slate-200 active:scale-[0.98]"
+                >
+                  <ArrowDownTrayIcon className="w-7 h-7" />
+                  Master Pack (4K)
                 </a>
                 <button 
-                  onClick={() => { setStep(1); setRenderedVideoUrl(null); setSelectedAdIdx(null); setImageAnalysis(null); setVideoAnalysis(null); }} 
-                  className="px-10 py-6 bg-slate-50 text-slate-400 font-black rounded-2xl hover:bg-slate-100 transition-all uppercase tracking-widest text-[10px] flex items-center justify-center gap-2"
+                  onClick={() => { setStep(1); setRenderedVideoUrl(null); setSelectedAdIdx(null); setSocialCaptions(null); }} 
+                  className="py-7 bg-white text-slate-400 font-black rounded-3xl hover:bg-slate-50 transition-all uppercase tracking-widest text-[11px] flex items-center justify-center gap-3 border border-slate-100 shadow-xl shadow-slate-100/50"
                 >
                   <ArrowUturnLeftIcon className="w-4 h-4" />
-                  New Project
+                  Start New Session
                 </button>
               </div>
+            </div>
+            
+            <div className="flex items-center gap-8 px-12">
+               <div className="flex-1 h-px bg-slate-200"></div>
+               <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em]">End of Operation</p>
+               <div className="flex-1 h-px bg-slate-200"></div>
             </div>
           </div>
         </div>
@@ -550,26 +641,23 @@ const CreateAd: React.FC<{ user: User }> = ({ user }) => {
   );
 };
 
-const FormInput: React.FC<{ label: string, placeholder: string, value: string, onChange: (v: string) => void }> = ({ label, placeholder, value, onChange }) => (
-  <div>
-    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{label}</label>
-    <input type="text" placeholder={placeholder} className="w-full px-8 py-5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-[6px] focus:ring-indigo-100 outline-none font-bold transition-all text-slate-700 shadow-sm" value={value} onChange={(e) => onChange(e.target.value)} />
+const StepIndicator: React.FC<{ num: number, active: boolean, label: string }> = ({ num, active, label }) => (
+  <div className={`flex items-center gap-3 transition-all duration-500 ${active ? 'opacity-100' : 'opacity-30 scale-95'}`}>
+    <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-black transition-all ${active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-100 text-slate-400'}`}>
+      {num}
+    </div>
+    <span className={`text-[10px] font-black uppercase tracking-widest ${active ? 'text-slate-900' : 'text-slate-400'}`}>{label}</span>
   </div>
 );
 
-const FormTextarea: React.FC<{ label: string, placeholder: string, value: string, onChange: (v: string) => void }> = ({ label, placeholder, value, onChange }) => (
-  <div>
-    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{label}</label>
-    <textarea rows={4} placeholder={placeholder} className="w-full px-8 py-5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-[6px] focus:ring-indigo-100 outline-none font-bold transition-all text-slate-700 shadow-sm" value={value} onChange={(e) => onChange(e.target.value)} />
-  </div>
-);
-
-const FeatureBox: React.FC<{ icon: React.ReactNode, title: string, desc: string }> = ({ icon, title, desc }) => (
-  <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex gap-6 group hover:shadow-xl transition-all duration-500">
-    <div className="w-14 h-14 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 group-hover:rotate-6 shadow-inner">{icon}</div>
-    <div className="flex-1">
-      <h3 className="font-black text-slate-900 mb-1 tracking-tight">{title}</h3>
-      <p className="text-sm font-bold text-slate-400 leading-relaxed">{desc}</p>
+const FeatureSmall: React.FC<{ icon: React.ReactNode, label: string, desc: string, active?: boolean }> = ({ icon, label, desc, active }) => (
+  <div className={`flex gap-5 items-start transition-all ${active ? 'opacity-100' : 'opacity-60'}`}>
+    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${active ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+      {icon}
+    </div>
+    <div>
+      <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-1">{label}</h4>
+      <p className="text-[10px] font-bold text-slate-400 leading-relaxed">{desc}</p>
     </div>
   </div>
 );

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Routes, Route, useNavigate, Link } from 'react-router-dom';
+import { Routes, Route, useNavigate, Link, Navigate } from 'react-router-dom';
 import { 
   PlusCircleIcon, 
   ChartBarIcon, 
@@ -20,13 +20,10 @@ import LinkHub from './pages/LinkHub';
 import Settings from './pages/Settings';
 import { User } from './types';
 
-// The global aistudio object is pre-configured in the environment.
-// Redundant declarations can cause modifier mismatch errors during TypeScript compilation.
-
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const [hasApiKey, setHasApiKey] = useState<boolean>(true); // Assume true initially
+  const [hasApiKey, setHasApiKey] = useState<boolean>(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -35,9 +32,8 @@ const App: React.FC = () => {
       setUser(JSON.parse(savedUser));
     }
 
-    // MANDATORY: Check if API key is selected before accessing main app
     const checkApiKey = async () => {
-      // @ts-ignore: aistudio is pre-configured globally but may not be in the local TS context
+      // @ts-ignore
       if (window.aistudio) {
         try {
           // @ts-ignore
@@ -49,6 +45,13 @@ const App: React.FC = () => {
       }
     };
     checkApiKey();
+
+    const handleResetKey = () => {
+      setHasApiKey(false);
+    };
+
+    window.addEventListener('vendo:reset-api-key', handleResetKey);
+    return () => window.removeEventListener('vendo:reset-api-key', handleResetKey);
   }, []);
 
   const handleLogin = (email: string) => {
@@ -91,12 +94,10 @@ const App: React.FC = () => {
     if (window.aistudio) {
       // @ts-ignore
       await window.aistudio.openSelectKey();
-      // Guideline: Assume the key selection was successful after triggering openSelectKey()
       setHasApiKey(true);
     }
   };
 
-  // VALUE CALCULATOR LOGIC
   const performanceData = useMemo(() => {
     const clicks = 428;
     const sales = clicks * 0.02 * 50;
@@ -106,7 +107,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 selection:bg-indigo-100 selection:text-indigo-700 font-sans">
-      {/* MANDATORY API KEY SELECTION DIALOG */}
       {!hasApiKey && user && (
         <div className="fixed inset-0 z-[200] bg-slate-900/90 backdrop-blur-xl flex items-center justify-center p-6">
           <div className="bg-white rounded-[3rem] p-10 max-w-md w-full text-center shadow-2xl border border-white">
@@ -152,14 +152,16 @@ const App: React.FC = () => {
       )}
 
       <Routes>
-        <Route path="/" element={<Landing onLogin={handleLogin} />} />
-        {user && (
-          <Route path="/*" element={
+        <Route path="/" element={!user ? <Landing onLogin={handleLogin} /> : <Navigate to="/dashboard" />} />
+        
+        {/* Protected Dashboard Route */}
+        <Route path="/*" element={
+          user ? (
             <div className="flex h-screen overflow-hidden">
               <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col">
                 <div className="p-6">
                   <Link to="/dashboard" className="flex items-center gap-2 font-black text-2xl tracking-tighter text-indigo-600">
-                    < BoltIcon className="w-8 h-8" />
+                    <BoltIcon className="w-8 h-8" />
                     VENDO
                   </Link>
                 </div>
@@ -211,6 +213,7 @@ const App: React.FC = () => {
                     <Route path="/links" element={<LinkHub user={user} />} />
                     <Route path="/stats" element={<Stats user={user} />} />
                     <Route path="/settings" element={<Settings user={user} onUpdateUser={updateUser} />} />
+                    <Route path="*" element={<Navigate to="/dashboard" />} />
                   </Routes>
                 </div>
               </main>
@@ -223,8 +226,10 @@ const App: React.FC = () => {
                 <MobileLink to="/settings" icon={<Cog6ToothIcon className="w-6 h-6" />} />
               </nav>
             </div>
-          } />
-        )}
+          ) : (
+            <Navigate to="/" />
+          )
+        } />
       </Routes>
 
       {/* Upgrade Modal */}
@@ -239,7 +244,7 @@ const App: React.FC = () => {
             
             <div className="text-center">
               <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                < BoltIcon className="w-10 h-10" />
+                <BoltIcon className="w-10 h-10" />
               </div>
               <h2 className="text-3xl font-black text-slate-900 mb-2">Unlock Vendo Pro</h2>
               <p className="text-slate-500 font-medium mb-8">4 AI UGC ads per month, advanced ROI tracking, and priority cloud rendering.</p>
@@ -250,7 +255,6 @@ const App: React.FC = () => {
                    <span className="text-2xl font-black text-indigo-600">$25<span className="text-sm text-slate-400">/mo</span></span>
                  </div>
                  
-                 {/* VALUE CALCULATOR BREAKDOWN */}
                  <div className="mb-6 pb-6 border-b border-slate-200">
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Your Trial Impact</p>
                     <div className="grid grid-cols-2 gap-4">
@@ -293,7 +297,7 @@ const App: React.FC = () => {
 const FeatureRow: React.FC<{ label: string }> = ({ label }) => (
   <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
     <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
-      < BoltIcon className="w-3 h-3" />
+      <BoltIcon className="w-3 h-3" />
     </div>
     {label}
   </div>

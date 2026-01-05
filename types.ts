@@ -5,6 +5,11 @@ export interface User {
   username: string;
   subscription: 'free' | 'pro';
   trialEndsAt: string;
+  hasCompletedOnboarding?: boolean;
+  trackingPixels?: {
+    facebookPixelId?: string;
+    googleAnalyticsId?: string;
+  };
   privacySettings?: {
     autoDeleteAfter24Months: boolean;
   };
@@ -34,7 +39,7 @@ export interface LinkBlock {
   title: string;
   url: string;
   clicks: number;
-  type: 'shop' | 'ad' | 'custom' | 'social' | 'contact' | 'hero';
+  type: 'shop' | 'ad' | 'custom' | 'social' | 'contact' | 'hero' | 'share';
   isNsfw?: boolean;
   isUnblurred?: boolean;
 }
