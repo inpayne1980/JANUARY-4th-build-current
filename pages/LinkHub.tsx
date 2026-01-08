@@ -27,10 +27,15 @@ import {
   BookmarkSquareIcon,
   DevicePhoneMobileIcon,
   XMarkIcon,
-  EyeIcon
+  EyeIcon,
+  Bars2Icon,
+  TagIcon,
+  CheckBadgeIcon as CheckBadgeIconOutline,
+  PaintBrushIcon
 } from '@heroicons/react/24/outline';
+import { CheckBadgeIcon } from '@heroicons/react/24/solid';
 import { User, LinkBlock } from '../types';
-import { checkContentSafety } from '../services/geminiService';
+import { checkContentSafety, analyzeProductUrl } from '../services/geminiService';
 
 interface LinkHubProps {
   user: User;
@@ -56,8 +61,17 @@ const SHOP_PLATFORMS = [
   { name: 'gumroad.com', label: 'Gumroad' },
   { name: 'stripe.com', label: 'Stripe' },
   { name: 'shopify.com', label: 'Shopify' },
+  { name: 'myshopify.com', label: 'Shopify' },
   { name: 'etsy.com', label: 'Etsy' },
   { name: 'amazon.com', label: 'Amazon' },
+  { name: 'ebay.com', label: 'eBay' },
+  { name: 'redbubble.com', label: 'Redbubble' },
+  { name: 'teespring.com', label: 'Spring' },
+  { name: 'spring.com', label: 'Spring' },
+  { name: 'printful.com', label: 'Printful' },
+  { name: 'printify.com', label: 'Printify' },
+  { name: 'society6.com', label: 'Society6' },
+  { name: 'zazzle.com', label: 'Zazzle' },
   { name: 'stan.store', label: 'Stan Store' },
   { name: 'whop.com', label: 'Whop' },
   { name: 'buymeacoffee.com', label: 'Buy Me A Coffee' }
@@ -73,6 +87,13 @@ const LinkHub: React.FC<LinkHubProps> = ({ user }) => {
   const [isCheckingSafety, setIsCheckingSafety] = useState(false);
   const [isSyncingQR, setIsSyncingQR] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  
+  // Marketplace Preview States
+  const [isFetchingPreview, setIsFetchingPreview] = useState(false);
+  const [marketPreview, setMarketPreview] = useState<{ name: string, description: string, type: 'marketplace' | 'boutique' | 'pod' } | null>(null);
+
+  // Drag and Drop State
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(`vendo_links_${user.id}`);
@@ -123,6 +144,44 @@ const LinkHub: React.FC<LinkHubProps> = ({ user }) => {
     if (SOCIAL_PLATFORMS.some(platform => lowUrl.includes(platform.name))) return 'social';
     if (SHOP_PLATFORMS.some(platform => lowUrl.includes(platform.name))) return 'shop';
     return 'custom';
+  };
+
+  const isMarketplaceUrl = (url: string) => {
+    const lowUrl = url.toLowerCase();
+    return [
+      'amazon.', 'shopify.', 'myshopify.', 'etsy.', 'ebay.',
+      'redbubble.', 'teespring.', 'spring.com', 'printful.', 'printify.', 'society6.', 'zazzle.'
+    ].some(m => lowUrl.includes(m));
+  };
+
+  const getUrlCommerceType = (url: string): 'marketplace' | 'boutique' | 'pod' => {
+    const lowUrl = url.toLowerCase();
+    if (['redbubble', 'teespring', 'spring.com', 'printful', 'printify', 'society6', 'zazzle'].some(p => lowUrl.includes(p))) {
+      return 'pod';
+    }
+    if (['shopify', 'myshopify'].some(p => lowUrl.includes(p))) {
+      return 'boutique';
+    }
+    return 'marketplace';
+  };
+
+  const fetchMarketPreview = async (url: string) => {
+    if (!isMarketplaceUrl(url)) return;
+    setIsFetchingPreview(true);
+    setMarketPreview(null);
+    try {
+      const info = await analyzeProductUrl(url);
+      setMarketPreview({
+        name: info.productName,
+        description: info.description,
+        type: getUrlCommerceType(url)
+      });
+      if (!newTitle) setNewTitle(info.productName);
+    } catch (e) {
+      console.error("Preview failed", e);
+    } finally {
+      setIsFetchingPreview(false);
+    }
   };
 
   const getFavicon = (url: string, type: string) => {
@@ -186,6 +245,7 @@ const LinkHub: React.FC<LinkHubProps> = ({ user }) => {
       setNewTitle('');
       setNewUrl('');
       setBlockType('custom');
+      setMarketPreview(null);
       setIsAdding(false);
       setIsCheckingSafety(false);
       triggerQRSync();
@@ -210,6 +270,30 @@ const LinkHub: React.FC<LinkHubProps> = ({ user }) => {
     
     setLinks(newLinks);
     setHubMode('manual');
+    triggerQRSync();
+  };
+
+  // Drag and Drop Handlers
+  const onDragStart = (index: number) => {
+    setDraggedIndex(index);
+    setHubMode('manual');
+  };
+
+  const onDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    const newLinks = [...links];
+    const item = newLinks[draggedIndex];
+    newLinks.splice(draggedIndex, 1);
+    newLinks.splice(index, 0, item);
+    
+    setDraggedIndex(index);
+    setLinks(newLinks);
+  };
+
+  const onDragEnd = () => {
+    setDraggedIndex(null);
     triggerQRSync();
   };
 
@@ -326,15 +410,19 @@ const LinkHub: React.FC<LinkHubProps> = ({ user }) => {
            </div>
 
            {isAdding && (
-             <div className="p-8 md:p-10 bg-white border border-indigo-100 rounded-[2.5rem] shadow-2xl space-y-6 animate-in zoom-in-95 duration-300">
-               <div className="flex items-center justify-between">
+             <div className="p-8 md:p-10 bg-white border border-indigo-100 rounded-[2.5rem] shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 overflow-hidden relative">
+               <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                 <BoltIcon className="w-32 h-32 text-indigo-600" />
+               </div>
+               
+               <div className="flex items-center justify-between relative z-10">
                  <h2 className="text-xl font-black text-slate-900">Configure Block</h2>
                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
                    <SparklesIcon className="w-5 h-5" />
                  </div>
                </div>
                
-               <div className="grid grid-cols-3 gap-3">
+               <div className="grid grid-cols-3 gap-3 relative z-10">
                   <button 
                     onClick={() => setBlockType('custom')}
                     className={`py-4 rounded-xl font-black text-[9px] uppercase tracking-widest border-2 transition-all ${blockType === 'custom' ? 'border-indigo-600 bg-indigo-50 text-indigo-600' : 'border-slate-50 bg-slate-50 text-slate-400'}`}
@@ -356,30 +444,84 @@ const LinkHub: React.FC<LinkHubProps> = ({ user }) => {
                </div>
                
                {blockType !== 'share' ? (
-                 <div className="space-y-4">
-                    <div>
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Title Label</label>
-                      <input placeholder="e.g. My Secret Shop" className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-xl font-bold focus:ring-4 focus:ring-indigo-100 outline-none transition-all placeholder:text-slate-300" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
-                    </div>
+                 <div className="space-y-4 relative z-10">
                     <div className="relative">
                       <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Destination URL</label>
                       <div className="relative">
                         <input 
-                          placeholder="Paste social or shop URL..." 
-                          className={`w-full ${getFavicon(newUrl, blockType) ? 'pl-14' : 'pl-6'} pr-6 py-4 bg-slate-50 border border-slate-100 rounded-xl font-bold focus:ring-4 focus:ring-indigo-100 outline-none transition-all placeholder:text-slate-300`} 
+                          placeholder="Social, Amazon, Shopify, or POD link..." 
+                          className={`w-full ${getFavicon(newUrl, blockType) ? 'pl-14' : 'pl-6'} pr-24 py-4 bg-slate-50 border border-slate-100 rounded-xl font-bold focus:ring-4 focus:ring-indigo-100 outline-none transition-all placeholder:text-slate-300`} 
                           value={newUrl} 
-                          onChange={(e) => setNewUrl(e.target.value)} 
+                          onChange={(e) => {
+                            setNewUrl(e.target.value);
+                            if (isMarketplaceUrl(e.target.value) && e.target.value.length > 15) {
+                               fetchMarketPreview(e.target.value);
+                            }
+                          }} 
                         />
                         {getFavicon(newUrl, blockType) && (
                           <div className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-white shadow-sm border border-slate-100 flex items-center justify-center overflow-hidden animate-in fade-in zoom-in-75 ring-1 ring-slate-100">
                             <img src={getFavicon(newUrl, blockType)!} alt="Favicon Preview" className="w-5 h-5 object-contain" />
                           </div>
                         )}
+                        {isMarketplaceUrl(newUrl) && (
+                           <button 
+                             onClick={() => fetchMarketPreview(newUrl)}
+                             className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                           >
+                             <ArrowPathIcon className={`w-4 h-4 ${isFetchingPreview ? 'animate-spin' : ''}`} />
+                           </button>
+                        )}
                       </div>
+                    </div>
+                    
+                    {/* Marketplace/POD Preview Window */}
+                    {(isFetchingPreview || marketPreview) && (
+                       <div className="animate-in slide-in-from-top-4 duration-500">
+                          <div className="p-6 bg-slate-900 rounded-[2rem] border border-white/10 shadow-2xl relative overflow-hidden group/preview">
+                             {isFetchingPreview ? (
+                               <div className="flex flex-col items-center justify-center py-6 gap-4">
+                                  <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                                  <p className="text-[10px] font-black text-white uppercase tracking-widest animate-pulse">Gemini is browsing Shop...</p>
+                               </div>
+                             ) : marketPreview && (
+                               <div className="flex gap-6 items-center">
+                                  <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center overflow-hidden shrink-0 border border-white/10 shadow-inner">
+                                     <img src={`https://picsum.photos/seed/${marketPreview.name}/200/200`} className="w-full h-full object-cover opacity-80" alt="Product" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                     <div className="flex items-center gap-2 mb-1">
+                                        {marketPreview.type === 'pod' ? (
+                                          <PaintBrushIcon className="w-4 h-4 text-purple-400" />
+                                        ) : (
+                                          <ShoppingBagIcon className="w-4 h-4 text-indigo-400" />
+                                        )}
+                                        <span className={`text-[9px] font-black uppercase tracking-widest ${marketPreview.type === 'pod' ? 'text-purple-400' : 'text-indigo-400'}`}>
+                                          {marketPreview.type === 'pod' ? 'POD Custom Work' : marketPreview.type === 'boutique' ? 'Direct Store Item' : 'Marketplace Item'}
+                                        </span>
+                                     </div>
+                                     <h4 className="text-white font-black text-sm truncate mb-1">{marketPreview.name}</h4>
+                                     <p className="text-[10px] font-bold text-slate-400 line-clamp-2 leading-relaxed italic">"{marketPreview.description}"</p>
+                                  </div>
+                                  <div className="absolute top-4 right-4">
+                                     <div className={`px-2 py-1 border rounded-md text-[8px] font-black uppercase tracking-widest flex items-center gap-1 ${marketPreview.type === 'pod' ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'}`}>
+                                        <CheckBadgeIcon className="w-3 h-3" />
+                                        {marketPreview.type === 'boutique' ? 'Verified Boutique' : 'Verified'}
+                                     </div>
+                                  </div>
+                               </div>
+                             )}
+                          </div>
+                       </div>
+                    )}
+
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Title Label</label>
+                      <input placeholder="e.g. My Secret Shop" className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-xl font-bold focus:ring-4 focus:ring-indigo-100 outline-none transition-all placeholder:text-slate-300" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
                     </div>
                  </div>
                ) : (
-                 <div className="bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100 flex items-center gap-4">
+                 <div className="bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100 flex items-center gap-4 relative z-10">
                     <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm">
                        <ShareIcon className="w-6 h-6 text-indigo-600" />
                     </div>
@@ -390,7 +532,7 @@ const LinkHub: React.FC<LinkHubProps> = ({ user }) => {
                  </div>
                )}
                
-               <div className="flex flex-col sm:flex-row gap-4 pt-4">
+               <div className="flex flex-col sm:flex-row gap-4 pt-4 relative z-10">
                  <button onClick={addLink} disabled={isCheckingSafety} className="flex-1 bg-indigo-600 text-white font-black py-4 rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2">
                    {isCheckingSafety ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : 'Create Block'}
                  </button>
@@ -417,12 +559,13 @@ const LinkHub: React.FC<LinkHubProps> = ({ user }) => {
                         onMoveDown={() => moveLink(link.id, 'down')}
                         renderCategoryIcon={renderCategoryIcon}
                         getFavicon={getFavicon}
+                        isDraggable={hubMode === 'manual'}
                       />
                     ))}
                  </div>
                ))
              ) : (
-               processedLinks.map((link) => (
+               processedLinks.map((link, idx) => (
                  <LinkBlockItem 
                     key={link.id} 
                     link={link} 
@@ -432,6 +575,11 @@ const LinkHub: React.FC<LinkHubProps> = ({ user }) => {
                     onMoveDown={() => moveLink(link.id, 'down')}
                     renderCategoryIcon={renderCategoryIcon}
                     getFavicon={getFavicon}
+                    isDraggable={hubMode === 'manual'}
+                    isDragging={draggedIndex === idx}
+                    onDragStart={() => onDragStart(idx)}
+                    onDragOver={(e) => onDragOver(e, idx)}
+                    onDragEnd={onDragEnd}
                  />
                ))
              )}
@@ -579,13 +727,42 @@ interface LinkBlockItemProps {
   onMoveDown: () => void;
   renderCategoryIcon: (link: LinkBlock) => React.ReactNode;
   getFavicon: (url: string, type: string) => string | null;
+  isDraggable?: boolean;
+  isDragging?: boolean;
+  onDragStart?: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDragEnd?: () => void;
 }
 
-const LinkBlockItem: React.FC<LinkBlockItemProps> = ({ link, isTop, onRemove, onMoveUp, onMoveDown, renderCategoryIcon, getFavicon }) => {
+const LinkBlockItem: React.FC<LinkBlockItemProps> = ({ 
+  link, 
+  isTop, 
+  onRemove, 
+  onMoveUp, 
+  onMoveDown, 
+  renderCategoryIcon, 
+  getFavicon,
+  isDraggable,
+  isDragging,
+  onDragStart,
+  onDragOver,
+  onDragEnd
+}) => {
   const favicon = getFavicon(link.url, link.type);
   
   return (
-    <div className={`p-6 md:p-8 rounded-[2.5rem] border flex items-center gap-6 group transition-all ${link.type === 'hero' ? 'bg-indigo-50/30 border-indigo-200' : isTop ? 'bg-white border-indigo-200 shadow-xl' : 'bg-white border-slate-100 hover:border-slate-300'}`}>
+    <div 
+      draggable={isDraggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragEnd={onDragEnd}
+      className={`p-6 md:p-8 rounded-[2.5rem] border flex items-center gap-6 group transition-all cursor-default ${isDragging ? 'opacity-30 border-dashed border-indigo-400 bg-indigo-50' : link.type === 'hero' ? 'bg-indigo-50/30 border-indigo-200' : isTop ? 'bg-white border-indigo-200 shadow-xl' : 'bg-white border-slate-100 hover:border-slate-300'}`}
+    >
+      {isDraggable && (
+        <div className="p-2 text-slate-300 hover:text-indigo-600 transition-colors cursor-grab active:cursor-grabbing">
+          <Bars2Icon className="w-6 h-6" />
+        </div>
+      )}
       <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shrink-0 ${link.type === 'hero' ? 'bg-indigo-600 text-white shadow-lg' : link.type === 'share' ? 'bg-slate-900 text-white' : isTop ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-400'}`}>
         {renderCategoryIcon(link)}
       </div>
@@ -607,15 +784,17 @@ const LinkBlockItem: React.FC<LinkBlockItemProps> = ({ link, isTop, onRemove, on
            </div>
         </div>
       </div>
-      <div className="flex items-center gap-2 md:opacity-0 group-hover:opacity-100 transition-all">
-        <div className="flex flex-col gap-1">
-           <button onClick={onMoveUp} className="p-2 bg-slate-50 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors">
-              <ChevronUpIcon className="w-4 h-4" />
-           </button>
-           <button onClick={onMoveDown} className="p-2 bg-slate-50 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors">
-              <ChevronDownIcon className="w-4 h-4" />
-           </button>
-        </div>
+      <div className="flex items-center gap-2 md:opacity-0 group-hover:opacity-100 transition-all shrink-0">
+        {!isDraggable && (
+          <div className="flex flex-col gap-1">
+             <button onClick={onMoveUp} className="p-2 bg-slate-50 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors">
+                <ChevronUpIcon className="w-4 h-4" />
+             </button>
+             <button onClick={onMoveDown} className="p-2 bg-slate-50 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors">
+                <ChevronDownIcon className="w-4 h-4" />
+             </button>
+          </div>
+        )}
         <button onClick={() => onRemove(link.id)} className="p-3 bg-white border border-slate-100 text-slate-300 hover:text-rose-600 rounded-xl transition-all shadow-sm active:scale-95">
           <TrashIcon className="w-5 h-5" />
         </button>

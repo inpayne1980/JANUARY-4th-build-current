@@ -32,6 +32,16 @@ const triggerResetKey = () => {
   window.dispatchEvent(new CustomEvent('vendo:reset-api-key'));
 };
 
+const handleApiError = (e: any) => {
+  const msg = e.message?.toLowerCase() || "";
+  if (msg.includes("requested entity was not found") || 
+      msg.includes("permission") || 
+      msg.includes("unauthorized") || 
+      msg.includes("403")) {
+    triggerResetKey();
+  }
+};
+
 // CONTENT SAFETY LOGIC
 export const checkContentSafety = async (url: string, title: string): Promise<boolean> => {
   try {
@@ -52,7 +62,7 @@ export const checkContentSafety = async (url: string, title: string): Promise<bo
     });
     return JSON.parse(response.text || "false");
   } catch (e: any) {
-    if (e.message?.includes("Requested entity was not found")) triggerResetKey();
+    handleApiError(e);
     return false;
   }
 };
@@ -86,7 +96,7 @@ export const generateVideo = async (prompt: string, imageBase64?: string): Promi
     
     return `${downloadLink}&key=${process.env.API_KEY}`;
   } catch (e: any) {
-    if (e.message?.includes("Requested entity was not found")) triggerResetKey();
+    handleApiError(e);
     throw e;
   }
 };
@@ -139,7 +149,7 @@ export const generateAdScripts = async (
     
     return JSON.parse(response.text || "[]");
   } catch (e: any) {
-    if (e.message?.includes("Requested entity was not found")) triggerResetKey();
+    handleApiError(e);
     throw e;
   }
 };
@@ -191,18 +201,29 @@ export const generateSuccessInsight = async (
     });
     return JSON.parse(response.text || '{}');
   } catch (e: any) {
-    if (e.message?.includes("Requested entity was not found")) triggerResetKey();
+    handleApiError(e);
     throw e;
   }
 };
 
-// FIXED: Using gemini-3-pro-image-preview when using the googleSearch tool as required.
+// Search grounding is stable on gemini-3-flash-preview. 
+// Using it as primary to avoid 403 errors on project-restricted keys.
 export const analyzeProductUrl = async (url: string): Promise<{ productName: string, description: string, links: any[] }> => {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
-      contents: `Analyze this product URL and extract details for a UGC ad brief: ${url}. Provide a clear "Product Name:" and "Description:".`,
+      model: 'gemini-3-flash-preview',
+      contents: `Analyze this commerce URL and extract details for a Vendo Traffic Hub block. 
+      URL: ${url}
+      
+      Tasks:
+      1. Extract the specific "Product Name" or "Design Title".
+      2. Provide a short, viral description (under 15 words) highlighting its main selling point.
+      3. If it is a Shopify store, Print-on-Demand (Redbubble, Spring, etc.), or standard Marketplace (Amazon, Etsy), note its distinctive vibe.
+      
+      Format your response strictly as:
+      Product Name: [Name]
+      Description: [Description]`,
       config: {
         tools: [{ googleSearch: {} }]
       }
@@ -222,7 +243,7 @@ export const analyzeProductUrl = async (url: string): Promise<{ productName: str
       links: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
     };
   } catch (e: any) {
-    if (e.message?.includes("Requested entity was not found")) triggerResetKey();
+    handleApiError(e);
     throw e;
   }
 };
@@ -249,7 +270,7 @@ export const generateSocialCaptions = async (script: string): Promise<SocialCapt
     });
     return JSON.parse(response.text || '{}');
   } catch (e: any) {
-    if (e.message?.includes("Requested entity was not found")) triggerResetKey();
+    handleApiError(e);
     throw e;
   }
 };
@@ -270,7 +291,7 @@ export const generateThumbnail = async (product: string, hook: string): Promise<
     }
     return '';
   } catch (e: any) {
-    if (e.message?.includes("Requested entity was not found")) triggerResetKey();
+    handleApiError(e);
     throw e;
   }
 };
@@ -291,7 +312,7 @@ export const generateAdVisual = async (prompt: string): Promise<string> => {
     }
     return '';
   } catch (e: any) {
-    if (e.message?.includes("Requested entity was not found")) triggerResetKey();
+    handleApiError(e);
     throw e;
   }
 };
@@ -309,7 +330,7 @@ export const generateSpeech = async (text: string): Promise<string> => {
     });
     return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || '';
   } catch (e: any) {
-    if (e.message?.includes("Requested entity was not found")) triggerResetKey();
+    handleApiError(e);
     throw e;
   }
 };
@@ -328,7 +349,7 @@ export const transcribeAudio = async (base64Audio: string): Promise<string> => {
     });
     return response.text || '';
   } catch (e: any) {
-    if (e.message?.includes("Requested entity was not found")) triggerResetKey();
+    handleApiError(e);
     throw e;
   }
 };
@@ -347,7 +368,7 @@ export const analyzeImage = async (base64Image: string): Promise<string> => {
     });
     return response.text || '';
   } catch (e: any) {
-    if (e.message?.includes("Requested entity was not found")) triggerResetKey();
+    handleApiError(e);
     throw e;
   }
 };
@@ -366,7 +387,7 @@ export const analyzeVideoContent = async (base64Thumbnail: string, script: strin
     });
     return response.text || '';
   } catch (e: any) {
-    if (e.message?.includes("Requested entity was not found")) triggerResetKey();
+    handleApiError(e);
     throw e;
   }
 };
@@ -385,7 +406,7 @@ export const analyzeBaseVideo = async (base64Video: string): Promise<string> => 
     });
     return response.text || "";
   } catch (e: any) {
-    if (e.message?.includes("Requested entity was not found")) triggerResetKey();
+    handleApiError(e);
     throw e;
   }
 };
@@ -406,7 +427,7 @@ export const findLocalCreatorEvents = async (lat: number, lng: number): Promise<
       links: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
     };
   } catch (e: any) {
-    if (e.message?.includes("Requested entity was not found")) triggerResetKey();
+    handleApiError(e);
     throw e;
   }
 };
@@ -420,7 +441,7 @@ export const refineAdScript = async (currentScript: string, prompt: string): Pro
     });
     return response.text || currentScript;
   } catch (e: any) {
-    if (e.message?.includes("Requested entity was not found")) triggerResetKey();
+    handleApiError(e);
     throw e;
   }
 };
